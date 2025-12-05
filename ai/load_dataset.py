@@ -1,84 +1,76 @@
 import os
 import numpy as np
-import cv2
-import kagglehub
-from utils import normalize_landmarks, extract_landmarks_from_image
-
-# Download latest version
-dataset_path = kagglehub.dataset_download("grassknoted/asl-alphabet")
-
-print("Path to dataset files:", dataset_path)
-
-
-def rotate_image(image, angle):
-    """Rotate image by a given angle (in degrees) around the center."""
-    height, width = image.shape[:2]
-    center = (width // 2, height // 2)
-    
-    # Get rotation matrix
-    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-    
-    # Perform rotation
-    rotated = cv2.warpAffine(image, rotation_matrix, (width, height))
-    return rotated
-
+import pandas as pd
+from utils import normalize_landmarks
 
 def process_dataset():
-    """Process the ASL alphabet dataset and extract hand landmarks."""
-    full_dataset_path = os.path.join(dataset_path, "asl_alphabet_train", "asl_alphabet_train")
+    """Process the ASL alphabet dataset from CSV files and extract hand landmarks."""
+    dataset_dir = "ASLTrainingData"
     
     all_coords = []
     all_labels = []
 
-    # Only keep the 26 letters A–Z
-    valid_labels = set(list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+    # Get all CSV files
+    csv_files = [f for f in os.listdir(dataset_dir) if f.endswith(".csv") and f.startswith("ASL_Data_")]
+    
+    if not csv_files:
+        print(f"No CSV files found in {dataset_dir}")
+        return
 
-    for label in sorted(os.listdir(full_dataset_path)):
-        # Skip unwanted folders like "del", "space", "nothing"
-        if label not in valid_labels:
-            print(f"Skipping non-letter class: {label}")
+    print(f"Found {len(csv_files)} CSV files.")
+
+    for filename in sorted(csv_files):
+        file_path = os.path.join(dataset_dir, filename)
+        print(f"Processing {filename}...")
+        
+        try:
+            df = pd.read_csv(file_path)
+        except Exception as e:
+            print(f"Error reading {filename}: {e}")
             continue
 
-        label_dir = os.path.join(full_dataset_path, label)
-        if not os.path.isdir(label_dir):
+        # Expected columns based on the CSV header provided by user
+        # Time,Label,Handedness,Palm_X,Palm_Y,Palm_Z,Wrist_X,Wrist_Y,Wrist_Z,...
+        
+        # We need to extract X, Y, Z for all joints.
+        # The joints seem to be: Palm, Wrist, ThumbMetacarpal, ThumbProximal, ThumbDistal, ThumbTip, ...
+        # Total 22 joints: Palm + Wrist + 5 fingers * 4 joints/finger = 2 + 20 = 22
+        
+        # Let's identify coordinate columns
+        coord_cols = [c for c in df.columns if c.endswith("_X") or c.endswith("_Y") or c.endswith("_Z")]
+        
+        # Sort columns to ensure X, Y, Z order for each joint
+        # The CSV header order seems to be Joint_X, Joint_Y, Joint_Z.
+        # We can just trust the order if we select them carefully.
+        
+        # Let's verify we have 66 coordinate columns (22 joints * 3)
+        if len(coord_cols) != 66:
+            print(f"Warning: Expected 66 coordinate columns, found {len(coord_cols)} in {filename}. Skipping.")
             continue
 
-        print(f"Processing label: {label}")
-
-        count = 0
-        for filename in os.listdir(label_dir):
-            if count >= 50:
-                break
+        # Extract coordinates and labels
+        for index, row in df.iterrows():
+            label = row['Label']
             
-            img_path = os.path.join(label_dir, filename)
+            # Extract coordinates as a flat array
+            coords_flat = row[coord_cols].values.astype(np.float32)
             
-            # Read the image
-            img = cv2.imread(img_path)
-            if img is None:
-                continue
+            # Reshape to (22, 3) for normalization
+            coords = coords_flat.reshape(-1, 3)
             
-            # Apply random rotation between -20° and +20°
-            random_angle = np.random.uniform(-20, 20)
-            rotated_img = rotate_image(img, random_angle)
-            
-            # Extract landmarks from the rotated image
-            coords = extract_landmarks_from_image(rotated_img)
-            if coords is None:
-                # Mediapipe couldn't detect a hand, skip silently
-                continue
-            
-            # Normalize landmarks (includes roll normalization)
+            # Normalize landmarks
             coords = normalize_landmarks(coords)
-            flat = coords.flatten()  # 21 landmarks × 3 coords = 63 values
+            
+            # Flatten back to (66,)
+            flat = coords.flatten()
+            
             all_coords.append(flat)
             all_labels.append(label)
 
-            count += 1
-
-    # Save for later training
+    # Save for training
     os.makedirs("processed_data", exist_ok=True)
-    np.save("processed_data/debug_coords.npy", all_coords)
-    np.save("processed_data/debug_labels.npy", all_labels)
+    np.save("processed_data/debug_coords.npy", np.array(all_coords))
+    np.save("processed_data/debug_labels.npy", np.array(all_labels))
 
     print("Done! Extracted:", len(all_coords), "samples")
 

@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
+from utils import ASLDataset
 
 
 coords = np.load("processed_data/debug_coords.npy")   # shape: (N, 63)
@@ -43,16 +44,7 @@ print()
 
 
 # Make a Dataset + DataLoader
-class ASLDataset(Dataset):
-    def __init__(self, X, y):
-        self.X = X
-        self.y = y
 
-    def __len__(self):
-        return len(self.X)
-
-    def __getitem__(self, idx):
-        return self.X[idx], self.y[idx]
 
 train_dataset = ASLDataset(X_train, y_train)
 val_dataset   = ASLDataset(X_val, y_val)
@@ -77,11 +69,11 @@ for epoch in range(EPOCHS):
     total_loss = 0
 
     for batch_X, batch_y in train_loader:
-        optimizer.zero_grad()          # reset gradients
-        outputs = model(batch_X)       # forward pass
-        loss = criterion(outputs, batch_y)  # compute loss
-        loss.backward()                # compute gradients
-        optimizer.step()               # update weights
+        optimizer.zero_grad()          
+        outputs = model(batch_X)       
+        loss = criterion(outputs, batch_y)  
+        loss.backward()                
+        optimizer.step()               
 
         total_loss += loss.item()
     

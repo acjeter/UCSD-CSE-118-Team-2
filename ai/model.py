@@ -3,22 +3,19 @@ import torch.nn as nn
 
 # Define the model (MLP)
 class ASLModel(nn.Module):
-    def __init__(self, num_classes=26):
+    def __init__(self):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(63, 384),      # Modest increase
+            nn.Linear(66, 256),     
             nn.ReLU(),
             nn.Dropout(0.35),
-            nn.Linear(384, 384),
-            nn.ReLU(),
-            nn.Dropout(0.35),
-            nn.Linear(384, 256),
-            nn.ReLU(),
-            nn.Dropout(0.3),
             nn.Linear(256, 128),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(128, 26)
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(64, 26)
         )
     
     def forward(self, x):
