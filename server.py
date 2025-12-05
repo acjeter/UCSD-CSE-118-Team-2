@@ -177,8 +177,9 @@ HTML_PAGE = """
       // Speak the full translation on demand
       speakBtn.onclick = () => {
         if (!audioEnabled) return;
-        const text = translationSpan.textContent.trim();
-        if (text) {
+        const raw = translationSpan.textContent.trim();
+        if (raw) {
+          const text = raw.toLowerCase();
           speak(text);
         }
       };
