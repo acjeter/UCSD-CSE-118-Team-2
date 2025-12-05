@@ -91,8 +91,10 @@ HTML_PAGE = """
       }
       .btn-row {
         display: flex;
+        flex-wrap: wrap;
         gap: 0.5rem;
         margin-top: 1rem;
+        justify-content: center;
       }
       button {
         font-size: 1rem;
@@ -115,6 +117,8 @@ HTML_PAGE = """
     <div class="btn-row">
       <button id="toggleAudio">Audio: ON</button>
       <button id="clearBtn">Clear</button>
+      <button id="testAudio">Test Audio</button>
+      <button id="speakTranslation">Speak Translation</button>
     </div>
 
     <script>
@@ -123,8 +127,36 @@ HTML_PAGE = """
       const statusSpan = document.getElementById("status");
       const toggleBtn = document.getElementById("toggleAudio");
       const clearBtn = document.getElementById("clearBtn");
+      const testBtn = document.getElementById("testAudio");
+      const speakBtn = document.getElementById("speakTranslation");
 
       let audioEnabled = true;
+      let synth = window.speechSynthesis || null;
+
+      // Helper: show if TTS is unavailable
+      if (!synth) {
+        statusSpan.textContent = "Connected (no speechSynthesis support on this browser)";
+      }
+
+      function speak(text) {
+        if (!synth) return;
+        if (!text) return;
+        const utter = new SpeechSynthesisUtterance(text);
+        // Optional: pick a default voice if needed
+        // utter.voice = synth.getVoices()[0] || null;
+
+        // Cancel any ongoing speech and speak the new one
+        try {
+          synth.cancel();
+        } catch (e) {
+          console.error("Error cancelling speech:", e);
+        }
+        try {
+          synth.speak(utter);
+        } catch (e) {
+          console.error("Error speaking:", e);
+        }
+      }
 
       toggleBtn.onclick = () => {
         audioEnabled = !audioEnabled;
@@ -140,6 +172,20 @@ HTML_PAGE = """
         } catch (e) {
           console.error("Failed to clear:", e);
         }
+      };
+
+      // Speak the full translation on demand
+      speakBtn.onclick = () => {
+        if (!audioEnabled) return;
+        const text = translationSpan.textContent.trim();
+        if (text) {
+          speak(text);
+        }
+      };
+
+      // Explicit "user gesture" to unlock audio on iOS
+      testBtn.onclick = () => {
+        speak("Audio test");
       };
 
       const es = new EventSource("/stream");
@@ -161,11 +207,6 @@ HTML_PAGE = """
           letterSpan.textContent = letter;
           translationSpan.textContent = translation;
 
-          if (audioEnabled && letter && letter !== "?") {
-            const utterance = new SpeechSynthesisUtterance(letter);
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(utterance);
-          }
         } catch (e) {
           console.error("Error parsing SSE payload:", e);
         }
