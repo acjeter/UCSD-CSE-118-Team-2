@@ -2,6 +2,16 @@ import socket
 import threading
 import json
 import time
+import sys
+import os
+import torch
+import numpy as np
+
+# Add 'ai' folder to path so we can import model and utils
+sys.path.append(os.path.join(os.path.dirname(__file__), 'ai'))
+
+from model import ASLModel
+from utils import normalize_landmarks
 
 from flask import Flask, Response, render_template_string, request
 
@@ -10,6 +20,18 @@ app = Flask(__name__)
 # Shared state
 current_letter = "?"
 letters = []  # list of all letters received so far
+
+# ---------- MODEL LOADING ----------
+try:
+    print("Loading AI Model...")
+    classes = np.load("ai/label_classes.npy")
+    model = ASLModel(num_classes=len(classes))
+    model.load_state_dict(torch.load("ai/asl_model.pth", map_location='cpu'))
+    model.eval()
+    print("Model Loaded Successfully.")
+except Exception as e:
+    print(f"Error loading model: {e}")
+    model = None
 
 
 # ---------- TCP SERVER (HoloLens -> Laptop) ----------
@@ -42,13 +64,40 @@ def handle_client(conn, addr):
                 line, buffer = buffer.split(b"\n", 1)
                 try:
                     payload = json.loads(line.decode("utf-8"))
-                    letter = payload.get("letter")
-                    if letter:
-                        # Take only the first character, uppercased
-                        letter = str(letter)[0].upper()
-                        current_letter = letter
-                        letters.append(letter)
-                        print(f"[TCP] New letter: {letter} | Translation: {''.join(letters)}")
+                    
+                    # Case 1: Raw Joints from HoloLens (Run Inference)
+                    if "joints" in payload and model is not None:
+                        raw_data = payload["joints"]
+                        # Expecting list of 66 floats (22 joints * 3)
+                        if isinstance(raw_data, list) and len(raw_data) == 66:
+                            # Preprocess
+                            coords = np.array(raw_data, dtype=np.float32).reshape(-1, 3)
+                            coords = normalize_landmarks(coords)
+                            
+                            # Inference
+                            with torch.no_grad():
+                                x = torch.tensor(coords.flatten(), dtype=torch.float32).unsqueeze(0)
+                                output = model(x)
+                                pred_id = torch.argmax(output, dim=1).item()
+                                letter = str(classes[pred_id])
+                                
+                                # Update State
+                                current_letter = letter
+                                letters.append(letter)
+                                print(f"[AI] Detected: {letter}")
+                        else:
+                            print(f"[TCP] received joints but wrong shape: {len(raw_data)}")
+
+                    # Case 2: Letter sent directly (Legacy/Fallback)
+                    elif "letter" in payload:
+                        letter = payload.get("letter")
+                        if letter:
+                            # Take only the first character, uppercased
+                            letter = str(letter)[0].upper()
+                            current_letter = letter
+                            letters.append(letter)
+                            print(f"[TCP] New letter: {letter} | Translation: {''.join(letters)}")
+                            
                 except Exception as e:
                     print(f"[TCP] Error parsing message: {e}")
 
