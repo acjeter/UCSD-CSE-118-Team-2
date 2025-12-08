@@ -25,7 +25,7 @@ letters = []  # list of all letters received so far
 try:
     print("Loading AI Model...")
     classes = np.load("ai/label_classes.npy")
-    model = ASLModel(num_classes=len(classes))
+    model = ASLModel()
     model.load_state_dict(torch.load("ai/asl_model.pth", map_location='cpu'))
     model.eval()
     print("Model Loaded Successfully.")
