@@ -13,7 +13,7 @@ y_val = torch.tensor(np.load("processed_data/y_val.npy"), dtype=torch.long)
 classes = np.load("label_classes.npy")
 
 # Load the trained model
-model = ASLModel(num_classes=len(classes))
+model = ASLModel()
 model.load_state_dict(torch.load("asl_model.pth", map_location='cpu'))
 model.eval()
 
