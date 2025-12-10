@@ -1,21 +1,31 @@
+import os
 import numpy as np
 import torch
-import torch.nn as nn
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 from ai.model import ASLModel
 
+REPO_DIR = os.path.dirname(__file__)
+AI_DIR = os.path.join(REPO_DIR, "ai")
+PROCESSED_DIR = os.path.join(AI_DIR, "processed_data")
+
 # Load the test data
 print("Loading test data...")
-X_test = torch.tensor(np.load("ai/processed_data/X_test.npy"), dtype=torch.float32)
-y_test = torch.tensor(np.load("ai/processed_data/y_test.npy"), dtype=torch.long)
+X_test = torch.tensor(
+    np.load(os.path.join(PROCESSED_DIR, "X_test.npy")), dtype=torch.float32
+)
+y_test = torch.tensor(
+    np.load(os.path.join(PROCESSED_DIR, "y_test.npy")), dtype=torch.long
+)
 
 # Load the label classes
-classes = np.load("ai/label_classes.npy")
+classes = np.load(os.path.join(AI_DIR, "label_classes.npy"))
 
-# Load the trained model
+# Load the trained model (use the best validation checkpoint)
 print("Loading trained model...")
-model = ASLModel(num_classes=len(classes))
-model.load_state_dict(torch.load("ai/asl_model_best.pth", map_location='cpu'))
+model = ASLModel()
+model.load_state_dict(
+    torch.load(os.path.join(AI_DIR, "asl_model_best.pth"), map_location="cpu")
+)
 model.eval()
 
 print("="*60)

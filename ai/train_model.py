@@ -1,14 +1,19 @@
+import os
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from utils import ASLDataset
 
 
-coords = np.load("processed_data/debug_coords.npy")   # shape: (N, 63)
-labels = np.load("processed_data/debug_labels.npy")
+BASE_DIR = os.path.dirname(__file__)
+PROCESSED_DIR = os.path.join(BASE_DIR, "processed_data")
+
+
+coords = np.load(os.path.join(PROCESSED_DIR, "debug_coords.npy"))  # shape: (N, 66)
+labels = np.load(os.path.join(PROCESSED_DIR, "debug_labels.npy"))
 
 
 label_encoder = LabelEncoder()
@@ -28,13 +33,13 @@ X_train, X_val, y_train, y_val = train_test_split(
     X_temp, y_temp, test_size=0.176, stratify=y_temp, random_state=42
 )  # 0.176 * 0.85 ≈ 0.15 of total
 
-# Save all splits
-np.save("processed_data/X_train.npy", X_train.numpy())
-np.save("processed_data/y_train.npy", y_train.numpy())
-np.save("processed_data/X_val.npy", X_val.numpy())
-np.save("processed_data/y_val.npy", y_val.numpy())
-np.save("processed_data/X_test.npy", X_test.numpy())
-np.save("processed_data/y_test.npy", y_test.numpy())
+# Save all splits inside ai/processed_data
+np.save(os.path.join(PROCESSED_DIR, "X_train.npy"), X_train.numpy())
+np.save(os.path.join(PROCESSED_DIR, "y_train.npy"), y_train.numpy())
+np.save(os.path.join(PROCESSED_DIR, "X_val.npy"), X_val.numpy())
+np.save(os.path.join(PROCESSED_DIR, "y_val.npy"), y_val.numpy())
+np.save(os.path.join(PROCESSED_DIR, "X_test.npy"), X_test.numpy())
+np.save(os.path.join(PROCESSED_DIR, "y_test.npy"), y_test.numpy())
 
 print(f"Data split sizes:")
 print(f"  Training:   {len(X_train)} samples ({len(X_train)/len(X)*100:.1f}%)")
@@ -53,6 +58,7 @@ val_loader = DataLoader(val_dataset, batch_size=32)
 
 
 from model import ASLModel
+
 model = ASLModel()
 
 # Loss + Optimizer
@@ -106,9 +112,9 @@ for epoch in range(EPOCHS):
         break
 
 
-# Save final model and labels
-torch.save(model.state_dict(), "asl_model.pth")
-np.save("label_classes.npy", label_encoder.classes_)
+# Save final model and labels into the ai/ directory
+torch.save(model.state_dict(), os.path.join(BASE_DIR, "asl_model.pth"))
+np.save(os.path.join(BASE_DIR, "label_classes.npy"), label_encoder.classes_)
 
 print("\nTraining complete!")
 print(f"Best model saved to: asl_model_best.pth (Val Acc: {best_val_acc:.3f})")

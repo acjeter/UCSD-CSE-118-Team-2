@@ -81,19 +81,26 @@ def normalize_roll(coords):
 
 def normalize_landmarks(coords):
     """
-    coords: numpy array of shape (N, 3) where N is 21 or 26
+    Normalize raw (x, y, z) joint coordinates.
+
+    coords: numpy array of shape (N, 3) where N is 21 or 22
     returns: normalized numpy array of same shape
     """
     coords = coords.copy()
     num_joints = coords.shape[0]
 
-    # Step 1: apply roll normalization
+    # Step 1: apply roll normalization if desired
+    # NOTE: this must be enabled/disabled consistently
+    # across both training (load_dataset.py) and inference (server.py).
     # coords = normalize_roll(coords)
 
-    # Define indices
-    # Define indices for 22-joint schema
+    # Define indices for 22-joint schema: [Palm, Wrist, ...]
     wrist_idx = 1
     middle_tip_idx = 13  # MiddleTip
+
+    if num_joints <= max(wrist_idx, middle_tip_idx):
+        # Fallback: avoid index errors on unexpected schemas
+        return coords
 
     # Step 2: translate wrist to origin
     wrist = coords[wrist_idx]
@@ -110,7 +117,6 @@ def normalize_landmarks(coords):
     # Step 4: scale the entire hand by hand_size
     coords /= hand_size
 
-    return coords
     return coords
 
 

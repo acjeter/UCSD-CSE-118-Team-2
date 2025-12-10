@@ -3,10 +3,14 @@ import numpy as np
 import pandas as pd
 from utils import normalize_landmarks
 
+
+BASE_DIR = os.path.dirname(__file__)
+ROOT_DIR = os.path.dirname(BASE_DIR)
+
+
 def process_dataset():
     """Process the ASL alphabet dataset from CSV files and extract hand landmarks."""
-    dataset_dir = "ASLTrainingData"
-    
+    dataset_dir = os.path.join(ROOT_DIR, "ASLTrainingData")
     all_coords = []
     all_labels = []
 
@@ -67,10 +71,11 @@ def process_dataset():
             all_coords.append(flat)
             all_labels.append(label)
 
-    # Save for training
-    os.makedirs("processed_data", exist_ok=True)
-    np.save("processed_data/debug_coords.npy", np.array(all_coords))
-    np.save("processed_data/debug_labels.npy", np.array(all_labels))
+    # Save for training (inside ai/processed_data)
+    processed_dir = os.path.join(BASE_DIR, "processed_data")
+    os.makedirs(processed_dir, exist_ok=True)
+    np.save(os.path.join(processed_dir, "debug_coords.npy"), np.array(all_coords))
+    np.save(os.path.join(processed_dir, "debug_labels.npy"), np.array(all_labels))
 
     print("Done! Extracted:", len(all_coords), "samples")
 
