@@ -1,20 +1,32 @@
+import os
 import numpy as np
 import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 from model import ASLModel
 
+# Resolve paths relative to this file so the script
+# works regardless of the current working directory.
+BASE_DIR = os.path.dirname(__file__)
+PROCESSED_DIR = os.path.join(BASE_DIR, "processed_data")
+
 # Load the validation data
-X_val = torch.tensor(np.load("processed_data/X_val.npy"), dtype=torch.float32)
-y_val = torch.tensor(np.load("processed_data/y_val.npy"), dtype=torch.long)
+X_val = torch.tensor(
+    np.load(os.path.join(PROCESSED_DIR, "X_val.npy")),
+    dtype=torch.float32,
+)
+y_val = torch.tensor(
+    np.load(os.path.join(PROCESSED_DIR, "y_val.npy")),
+    dtype=torch.long,
+)
 
 # Load the label classes
-classes = np.load("label_classes.npy")
+classes = np.load(os.path.join(BASE_DIR, "label_classes.npy"))
 
-# Load the trained model
-model = ASLModel(num_classes=len(classes))
-model.load_state_dict(torch.load("asl_model.pth", map_location='cpu'))
+# Load the trained model (use the best validation checkpoint)
+model = ASLModel()
+model.load_state_dict(
+    torch.load(os.path.join(BASE_DIR, "asl_model_best.pth"), map_location="cpu")
+)
 model.eval()
 
 print("="*60)
@@ -110,4 +122,3 @@ print(classification_report(all_true_labels, all_predictions, target_names=class
 print("="*60)
 print("VALIDATION COMPLETE")
 print("="*60)
-
