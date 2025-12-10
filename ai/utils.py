@@ -88,7 +88,7 @@ def normalize_landmarks(coords):
     num_joints = coords.shape[0]
 
     # Step 1: apply roll normalization
-    coords = normalize_roll(coords)
+    # coords = normalize_roll(coords)
 
     # Define indices
     # Define indices for 22-joint schema
